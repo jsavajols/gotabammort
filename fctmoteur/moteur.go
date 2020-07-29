@@ -11,22 +11,32 @@ import (
 var Periodes []c.Periode
 
 // Ta Calcul du Ta
-func Ta(capital float64, duree int, txInteret float64, detail string) []byte {
+func Ta(params c.Params) []byte {
 	var interets float64
 	var mensu float64
-	var crdDebutMen = capital
-	var crdDebutAn = capital
+	var crdDebutMen = params.Capital
+	var crdDebutAn = params.Capital
 	var crdFin float64
 	var annee = 1
 	var cumulInterets float64
-	txInteret = (txInteret / 100) / 12
-	mensu = (capital * txInteret) / (1 - math.Pow((1+(txInteret)), -float64(duree)))
+	var messagesErreur []string
+	params.TxInteret = (params.TxInteret / 100) / 12
+	if params.TxInteret != 0 {
+		mensu = (params.Capital * params.TxInteret) / (1 - math.Pow((1+(params.TxInteret)), -float64(params.Duree)))
+	} else {
+		mensu = params.Capital / float64(params.Duree)
+	}
+	var periodeAssurance c.PeriodeAssurance
 
-	for m := 1; m <= duree; m++ {
-		interets = crdDebutMen * txInteret
+	for m := 1; m <= params.Duree; m++ {
+		if params.TxInteret != 0 {
+			interets = crdDebutMen * params.TxInteret
+		} else {
+			interets = 0
+		}
 		crdFin = crdDebutMen - mensu + interets
 
-		if detail == "m" {
+		if params.Detail == "m" {
 			Periodes = append(Periodes, c.Periode{
 				"Mois",
 				m,
@@ -34,12 +44,12 @@ func Ta(capital float64, duree int, txInteret float64, detail string) []byte {
 				crdFin,
 				mensu,
 				interets,
+				periodeAssurance,
 			})
 		} else {
 			var periodicite float64
 			periodicite = float64(m) / 12
 			if periodicite == math.Trunc(periodicite) {
-				// fmt.Printf("*****" + string(periodicite))
 				Periodes = append(Periodes, c.Periode{
 					"Annee",
 					annee,
@@ -47,6 +57,7 @@ func Ta(capital float64, duree int, txInteret float64, detail string) []byte {
 					crdFin,
 					mensu,
 					cumulInterets,
+					periodeAssurance,
 				})
 				cumulInterets = 0
 				crdDebutAn = crdFin
@@ -58,17 +69,21 @@ func Ta(capital float64, duree int, txInteret float64, detail string) []byte {
 
 	}
 	var iterations int
-	if detail == "m" {
-		iterations = duree
+	if params.Detail == "m" {
+		iterations = params.Duree
 	} else {
 		iterations = annee - 1
 	}
 	var retourMoteur = c.RetourMoteur{
-		capital,
-		duree,
-		txInteret,
+		params.Capital,
+		params.Duree,
+		params.TxInteret,
 		iterations,
 		Periodes,
+		0,
+		0,
+		"",
+		messagesErreur,
 	}
 	jsonData, _ := json.Marshal(retourMoteur)
 	return jsonData
