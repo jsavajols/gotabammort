@@ -2,12 +2,13 @@ package constantes
 
 // Params = Params
 type Params struct {
-	Capital   float64
-	Duree     int
-	TxInteret float64
-	Detail    string
-	DtNais    string
-	Csp       int
+	DateEffetGar  string
+	Capital       float64
+	Duree         int
+	TxInteret     float64
+	PeriodeCalcul int
+	DtNais        string
+	Csp           int
 }
 
 // PeriodeAssurance = PeriodeAssurance
@@ -22,7 +23,7 @@ type PeriodeAssurance struct {
 
 // Periode Structure
 type Periode struct {
-	TypePeriode   string
+	TypePeriode   int
 	NumPeriode    int
 	CrdDebut      float64
 	CrdFin        float64

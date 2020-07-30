@@ -15,9 +15,7 @@ func Ta(params c.Params) []byte {
 	var interets float64
 	var mensu float64
 	var crdDebutMen = params.Capital
-	var crdDebutAn = params.Capital
 	var crdFin float64
-	var annee = 1
 	var cumulInterets float64
 	var messagesErreur []string
 	params.TxInteret = (params.TxInteret / 100) / 12
@@ -36,44 +34,21 @@ func Ta(params c.Params) []byte {
 		}
 		crdFin = crdDebutMen - mensu + interets
 
-		if params.Detail == "m" {
-			Periodes = append(Periodes, c.Periode{
-				"Mois",
-				m,
-				crdDebutMen,
-				crdFin,
-				mensu,
-				interets,
-				periodeAssurance,
-			})
-		} else {
-			var periodicite float64
-			periodicite = float64(m) / 12
-			if periodicite == math.Trunc(periodicite) {
-				Periodes = append(Periodes, c.Periode{
-					"Annee",
-					annee,
-					crdDebutAn,
-					crdFin,
-					mensu,
-					cumulInterets,
-					periodeAssurance,
-				})
-				cumulInterets = 0
-				crdDebutAn = crdFin
-				annee++
-			}
-		}
+		Periodes = append(Periodes, c.Periode{
+			params.PeriodeCalcul,
+			m,
+			crdDebutMen,
+			crdFin,
+			mensu,
+			interets,
+			periodeAssurance,
+		})
 		crdDebutMen = crdFin
 		cumulInterets = cumulInterets + interets
 
 	}
 	var iterations int
-	if params.Detail == "m" {
-		iterations = params.Duree
-	} else {
-		iterations = annee - 1
-	}
+	iterations = params.Duree
 	var retourMoteur = c.RetourMoteur{
 		params.Capital,
 		params.Duree,
@@ -86,5 +61,58 @@ func Ta(params c.Params) []byte {
 		messagesErreur,
 	}
 	jsonData, _ := json.Marshal(retourMoteur)
+	return jsonData
+}
+
+// AjusteTa ajuste le TA en fonction de la périodicité
+func AjusteTa(ta []byte, params c.Params) []byte {
+	var retourMoteur c.RetourMoteur
+	json.Unmarshal(ta, &retourMoteur)
+	var newPeriodes []c.Periode
+	var newPeriodeAss c.PeriodeAssurance
+	var cumulInterets float64
+	var cumulRemboursement float64
+	var crdDebut = params.Capital
+	var crdFin float64
+	var rupture = 1
+	var ruptures = 1
+	for m := 0; m < retourMoteur.Duree; m++ {
+		// fmt.Print(retourMoteur.Periodes[m])
+		cumulInterets = cumulInterets + retourMoteur.Periodes[m].Interets
+		cumulRemboursement = cumulRemboursement + retourMoteur.Periodes[m].Remboursement
+		newPeriodeAss.Dc = newPeriodeAss.Dc + retourMoteur.Periodes[m].Assurance.Dc
+		if rupture == params.PeriodeCalcul {
+			crdFin = crdDebut - (cumulRemboursement - cumulInterets)
+			newPeriodeAss = retourMoteur.Periodes[m].Assurance
+			newPeriodes = append(newPeriodes, c.Periode{
+				params.PeriodeCalcul,
+				ruptures,
+				crdDebut,
+				crdFin,
+				cumulRemboursement,
+				cumulInterets,
+				newPeriodeAss,
+			})
+			ruptures++
+			rupture = 0
+			cumulRemboursement = 0
+			cumulInterets = 0
+			crdDebut = retourMoteur.Periodes[m].CrdFin
+		}
+		rupture++
+	}
+	var newRetourMoteur = c.RetourMoteur{
+		params.Capital,
+		params.Duree,
+		params.TxInteret,
+		params.PeriodeCalcul,
+		newPeriodes,
+		0,
+		0,
+		"",
+		retourMoteur.MessagesErreur,
+	}
+	jsonData, _ := json.Marshal(newRetourMoteur)
+
 	return jsonData
 }
